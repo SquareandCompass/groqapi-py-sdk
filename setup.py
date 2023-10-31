@@ -6,12 +6,13 @@ from setuptools import setup, find_packages
 #
 # prerequisite: setuptools
 # http://pypi.python.org/pypi/setuptools
-NAME = "groqapi-client"
-VERSION = "0.0.1"
+NAME = "groq-llm-api"
+VERSION = "0.5.0"
 PYTHON_REQUIRES = ">=3.7"
 REQUIRES = [
-    "urllib3 >= 1.25.3, < 2.1.0",
-    "grpcio" >= 1.42.0
+    "protobuf >=3.5.0, < 4.0dev",
+    "grpcio >= 1.42.0",
+    "google-api-python-client >= 2.53.0"
 ]
 
 setup(
@@ -25,6 +26,7 @@ setup(
     install_requires=REQUIRES,
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
+    python_requires=PYTHON_REQUIRES,
     long_description_content_type='text/markdown',
     long_description="""\
     The Groq Python API. Please see https://platform.groq.com/docs/api-reference for more details.
