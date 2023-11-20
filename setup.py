@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 # prerequisite: setuptools
 # http://pypi.python.org/pypi/setuptools
 NAME = "groq-llm-api"
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 PYTHON_REQUIRES = ">=3.7"
 REQUIRES = [
     "protobuf >=3.5.0, < 4.0dev",
