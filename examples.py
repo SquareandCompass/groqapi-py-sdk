@@ -28,21 +28,21 @@ if __name__ == "__main__":
 
     with ChatCompletion("llama2-70b-4096") as chat:
         prompt = "Who won the world series in 2020?"
-        response =  chat.send_chat(prompt, streaming=True)
+        response = chat.send_chat(prompt, streaming=True)
         print(f"Question : {prompt}\nResponse :\n")
         output = ""
         for resp in response:
             output += resp.content
         print(output)
         prompt = "The Los Angeles Dodgers won the World Series in 2020."
-        response =  chat.send_chat(prompt, streaming=True)
+        response = chat.send_chat(prompt, streaming=True)
         print(f"Question : {prompt}\nResponse :\n")
         output = ""
         for resp in response:
             output += resp.content
         print(output)
         prompt = "Where was it played?"
-        response =  chat.send_chat(prompt, streaming=True)
+        response = chat.send_chat(prompt, streaming=True)
         print(f"Question : {prompt}\nResponse :\n")
         output = ""
         for resp in response:
