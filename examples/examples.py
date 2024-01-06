@@ -2,13 +2,11 @@
 
 import os
 
-from groq.llmcloud import Completion
-from groq.llmcloud import ChatCompletion
-from groq.llmcloud import Models
+from groq.cloud.core import ChatCompletion, Completion, Models
 
 if __name__ == "__main__":
     # Set env var GROQ_SECRET_ACCESS_KEY with the access, or you can also set it below
-    # os.environ["GROQ_SECRET_ACCESS_KEY"] = ''
+    os.environ["GROQ_SECRET_ACCESS_KEY"] = "<key>"
 
     # List all Models first
     modelmanager = Models()
@@ -17,13 +15,13 @@ if __name__ == "__main__":
 
     with ChatCompletion("llama2-70b-4096") as chat:
         prompt = "Who won the world series in 2020?"
-        response, id, stats =  chat.send_chat(prompt)
+        response, id, stats = chat.send_chat(prompt)
         print(f"Question : {prompt}\nResponse : {response}\n")
         prompt = "The Los Angeles Dodgers won the World Series in 2020."
-        response, id, stats =  chat.send_chat(prompt)
+        response, id, stats = chat.send_chat(prompt)
         print(f"Question : {prompt}\nResponse : {response}\n")
         prompt = "Where was it played?"
-        response, id, stats =  chat.send_chat(prompt)
+        response, id, stats = chat.send_chat(prompt)
         print(f"Question : {prompt}\nResponse : {response}\n")
 
     with ChatCompletion("llama2-70b-4096") as chat:

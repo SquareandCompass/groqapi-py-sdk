@@ -1,22 +1,23 @@
 import os
-import requests
 import sys
-import grpc
 from datetime import datetime
-from typing import Union
-from typing import Literal
-from typing import Any
+from typing import Any, Literal, Union
+
+import grpc
+import requests
+
+from groq.cloud.core.types import GroqListModelsResponse
+from groq.cloud.core.auth import Auth
+
+from groq.cloud.core.exceptions import *
 
 sys.path.append(os.path.join(sys.path[0], "protogen"))
+from public.llmcloud.modelmanager.v1 import modelmanager_pb2, modelmanager_pb2_grpc
 from public.llmcloud.requestmanager.v1 import (
     requestmanager_pb2,
     requestmanager_pb2_grpc,
 )
 
-from public.llmcloud.modelmanager.v1 import (
-    modelmanager_pb2,
-    modelmanager_pb2_grpc,
-)
 
 class GroqGrpcConnection:
     _grpc_channel = None
@@ -24,36 +25,17 @@ class GroqGrpcConnection:
     _auth_token = ""
     _auth_expiry_time = ""
     _API_URL = "api.groq.com:443"
-    def _get_groq_key(self, renew=False):
-        groq_access_key = os.environ.get("GROQ_SECRET_ACCESS_KEY")
-        if self._auth_token != "" and renew is False:
-            return self._auth_token
-
-        if groq_access_key is None:
-            print("Auth Token Error: Please set env variable GROQ_SECRET_ACCESS_KEY with the unique secret")
-            sys.exit(1)
-
-        Headers = {
-            "Authorization": "Bearer " + groq_access_key,
-        }
-        AUTH_URL = "https://api.groq.com/v1/auth/get_token"
-        auth_resp = requests.post(url=AUTH_URL, headers=Headers)
-        self._auth_token = auth_resp.json()['access_token']
-        self._auth_expiry_time = auth_resp.json()['expiry']
+    auth_client: Auth
 
     def _is_past_expiry(self):
-        return datetime.now() >= datetime.strptime(self._auth_expiry_time, '%Y-%m-%dT%H:%M:%SZ')
+        return datetime.now() >= datetime.strptime(
+            self._auth_expiry_time, "%Y-%m-%dT%H:%M:%SZ"
+        )
 
     def _get_grpc_credentials(self):
-        if self._auth_token != "":
-            if self._is_past_expiry():
-                print("Renewing auth token")
-                self._get_groq_key(renew=True)
-            else:
-                print("Reusing auth token")
-        else:
-            print("Getting auth token")
-            self._get_groq_key(renew=True)
+        self._auth_token, self._auth_expiry_time = self.auth_client.get_token(
+            renew=True
+        )
 
         credentials = grpc.ssl_channel_credentials()
         call_credentials = grpc.access_token_call_credentials(self._auth_token)
@@ -71,7 +53,7 @@ class GroqGrpcConnection:
         return query_channel
 
     def __init__(self):
-        return
+        self.auth_client = Auth()
 
     def __del__(self):
         if self._grpc_channel is not None:
@@ -107,7 +89,9 @@ class GroqGrpcConnection:
 
         return self._grpc_channel_async
 
+
 grpc_connection = GroqGrpcConnection()
+
 
 class Models:
     def __init__(self):
@@ -118,13 +102,39 @@ class Models:
     def list_models(self):
         request = modelmanager_pb2.ListModelsRequest()
         resp = self._stub.ListModels(request)
-        return resp
+
+        try:
+            # TODO: support multiple models, the data structure can't do this
+            details = GroqListModelsResponse.Details(
+                family=resp.models[0].details.family,
+                version=resp.models[0].details.version,
+                size=resp.models[0].details.size,
+                sequence_length=resp.models[0].details.sequence_length,
+                tag=resp.models[0].details.tag,
+                name=resp.models[0].details.name,
+                owner=resp.models[0].details.owner,
+            )
+            meta = GroqListModelsResponse.Meta(created=resp.models[0].meta.created)
+            response = GroqListModelsResponse(
+                id=resp.models[0].id,
+                details=details,
+                meta=meta,
+                status=resp.models[0].status,
+            )
+        except Exception as e:
+            raise e
+
+        # return GroqListModelsResponse(**resp)
+        return response
+
 
 class ChatCompletion:
     def __init__(self, model):
         global grpc_connection
         self._query_channel = grpc_connection.get_grpc_channel()
-        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(self._query_channel)
+        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(
+            self._query_channel
+        )
         self._model = model
         self._system_prompt = "Give useful and accurate answers."
         self._lastmessages = []
@@ -143,7 +153,7 @@ class ChatCompletion:
         return None
 
     def _update_history(self, user_prompt, response):
-        self._lastmessages.append({"user_prompt" : user_prompt, "last_resp" : response})
+        self._lastmessages.append({"user_prompt": user_prompt, "last_resp": response})
 
     def _resp_generator(self, resp_stream):
         for response in resp_stream:
@@ -153,14 +163,14 @@ class ChatCompletion:
 
     def send_chat(
         self,
-        user_prompt = "Write multiple paragraphs",
+        user_prompt="Write multiple paragraphs",
         streaming=False,
         seed=1234,
         max_tokens=2048,
         temperature=0.7,
         top_p=0.3,
         top_k=40,
-    ) -> Union[tuple[Literal[''], Literal[''], dict] , Any]:
+    ) -> Union[tuple[Literal[""], Literal[""], dict], Any]:
         # Generate request
         request = requestmanager_pb2.GetTextCompletionRequest()
         request.user_prompt = user_prompt
@@ -189,12 +199,16 @@ class ChatCompletion:
                 resp = self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                print('Invalid Args. Please check model name and other params')
+                # print("Invalid Args. Please check model name and other params")
+                raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                print(f"grpc error: {e.details()}. Requested model maybe currently offline.")
+                # print(
+                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
+                # )
+                raise ModelUnavailableError(e)
             else:
                 raise e
-            return "", "", {}
+            # return "", "", {}
 
         if streaming == True:
             self._update_history(user_prompt, "")
@@ -203,11 +217,14 @@ class ChatCompletion:
             self._update_history(user_prompt, resp.content)
             return resp.content, resp.request_id, resp.stats
 
+
 class Completion:
     def __init__(self):
         global grpc_connection
         self._query_channel = grpc_connection.get_grpc_channel()
-        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(self._query_channel)
+        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(
+            self._query_channel
+        )
 
     def __del__(self):
         return
@@ -227,7 +244,7 @@ class Completion:
     def send_prompt(
         self,
         model,
-        user_prompt = "Write multiple paragraphs",
+        user_prompt="Write multiple paragraphs",
         system_prompt="Give useful and accurate answers.",
         streaming=False,
         seed=1234,
@@ -235,7 +252,7 @@ class Completion:
         temperature=0.7,
         top_p=0.3,
         top_k=40,
-    ) -> Union[tuple[Literal[''], Literal[''], dict] , Any]:
+    ) -> Union[tuple[Literal[""], Literal[""], dict], Any]:
         # Generate request
         request = requestmanager_pb2.GetTextCompletionRequest()
         request.user_prompt = user_prompt
@@ -254,13 +271,20 @@ class Completion:
                 resp = self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                print('Invalid Args. Please check model name and other params')
+                # print("Invalid Args. Please check model name and other params")
+                raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                print(f"grpc error: {e.details()}. Requested model maybe currently offline.")
-            else:
-                raise e
-            return "", "", {}
-        
+                # print(
+                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
+                # )
+                raise ModelUnavailableError(e)
+        except grpc._channel._MultiThreadedRendezvous as e:
+            # TODO: this is broken somehow, as if what is being raised inst an exception?
+            raise InvalidArgumentError(e)
+        except Exception as e:
+            raise e
+        # return "", "", {}
+
         if streaming == True:
             return self._resp_generator(resp_stream=resp_stream)
         else:
@@ -271,7 +295,7 @@ class AsyncCompletion:
     def __init__(
         self,
         model,
-        user_prompt = "Write multiple paragraphs",
+        user_prompt="Write multiple paragraphs",
         system_prompt="Give useful and accurate answers.",
         streaming=False,
         seed=1234,
@@ -282,7 +306,9 @@ class AsyncCompletion:
     ):
         global grpc_connection
         self._query_channel_async = grpc_connection.get_grpc_channel_async()
-        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(self._query_channel_async)
+        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(
+            self._query_channel_async
+        )
 
     async def __aenter__(self):
         global grpc_connection
@@ -299,7 +325,7 @@ class AsyncCompletion:
     async def send_prompt(
         self,
         model,
-        user_prompt = "Write multiple paragraphs",
+        user_prompt="Write multiple paragraphs",
         system_prompt="Give useful and accurate answers.",
         streaming=False,
         seed=1234,
@@ -307,7 +333,7 @@ class AsyncCompletion:
         temperature=0.7,
         top_p=0.3,
         top_k=40,
-    ) -> Union[tuple[Literal[''], Literal[''], dict] , Any]:
+    ) -> Union[tuple[Literal[""], Literal[""], dict], Any]:
         # Generate request
         request = requestmanager_pb2.GetTextCompletionRequest()
         request.user_prompt = user_prompt
@@ -326,23 +352,30 @@ class AsyncCompletion:
                 resp = await self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                print('Invalid Args. Please check model name and other params')
+                # print("Invalid Args. Please check model name and other params")
+                raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                print(f"grpc error: {e.details()}. Requested model maybe currently offline.")
+                # print(
+                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
+                # )
+                raise ModelUnavailableError(e)
             else:
                 raise e
-            return "", "", {}
+            # return "", "", {}
 
         if streaming == True:
             return self._resp_generator(resp_stream=resp_stream)
         else:
             return resp.content, resp.request_id, resp.stats
 
+
 class AsyncChatCompletion:
     def __init__(self, model):
         global grpc_connection
         self._query_channel = grpc_connection.get_grpc_channel_async()
-        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(self._query_channel)
+        self._stub = requestmanager_pb2_grpc.RequestManagerServiceStub(
+            self._query_channel
+        )
         self._model = model
         self._system_prompt = "Give useful and accurate answers."
         self._lastmessages = []
@@ -361,7 +394,7 @@ class AsyncChatCompletion:
         return None
 
     def _update_history(self, user_prompt, response):
-        self._lastmessages.append({"user_prompt" : user_prompt, "last_resp" : response})
+        self._lastmessages.append({"user_prompt": user_prompt, "last_resp": response})
 
     async def _resp_generator(self, resp_stream):
         async for response in resp_stream:
@@ -371,14 +404,14 @@ class AsyncChatCompletion:
 
     async def send_chat(
         self,
-        user_prompt = "Write multiple paragraphs",
+        user_prompt="Write multiple paragraphs",
         streaming=False,
         seed=1234,
         max_tokens=2048,
         temperature=0.7,
         top_p=0.3,
         top_k=40,
-    ) -> Union[tuple[Literal[''], Literal[''], dict] , Any]:
+    ) -> Union[tuple[Literal[""], Literal[""], dict], Any]:
         # Generate request
         request = requestmanager_pb2.GetTextCompletionRequest()
         request.user_prompt = user_prompt
@@ -407,12 +440,16 @@ class AsyncChatCompletion:
                 resp = await self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                print('Invalid Args. Please check model name and other params')
+                # print("Invalid Args. Please check model name and other params")
+                raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                print(f"grpc error: {e.details()}. Requested model maybe currently offline.")
+                # print(
+                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
+                # )
+                raise ModelUnavailableError(e)
             else:
                 raise e
-            return "", "", {}
+            # return "", "", {}
 
         if streaming == True:
             self._update_history(user_prompt, "")
