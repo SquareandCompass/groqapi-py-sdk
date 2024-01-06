@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 
-import os
 import asyncio
+import os
 
-from groq.llmcloud import AsyncCompletion
-from groq.llmcloud import AsyncChatCompletion
+from groq.cloud.core import AsyncChatCompletion, AsyncCompletion
+
 
 async def run():
     async with AsyncCompletion("llama2-70b-4096") as completion:
         prompt = "What are transformers in machine learning?"
-        response, id, stats = await completion.send_prompt("llama2-70b-4096", user_prompt=prompt)
+        response, id, stats = await completion.send_prompt(
+            "llama2-70b-4096", user_prompt=prompt
+        )
         if response != "":
             print(f"\nPrompt: {prompt}\n")
             print(f"Request ID: {id}")
@@ -18,7 +20,9 @@ async def run():
 
     async with AsyncCompletion("llama2-70b-4096") as complstream:
         prompt = "What is the difference between ray tracing and path tracing?"
-        response = await complstream.send_prompt("llama2-70b-4096", user_prompt=prompt, streaming=True)
+        response = await complstream.send_prompt(
+            "llama2-70b-4096", user_prompt=prompt, streaming=True
+        )
         print(f"\nPrompt: {prompt}\nStream Output:\n")
         output = ""
         async for resp in response:
@@ -48,6 +52,6 @@ async def run():
             output += resp.content
         print(output)
 
+
 if __name__ == "__main__":
     asyncio.run(run())
-    
