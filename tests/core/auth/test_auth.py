@@ -1,5 +1,5 @@
 from groq.cloud.core.auth import Auth
-from groq.cloud.core.exceptions import AuthTokenError, AuthenticationError
+from groq.cloud.core.exceptions import AuthenticationError, AuthTokenError
 
 
 class TestCoreAuth:

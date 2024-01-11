@@ -6,12 +6,9 @@ from typing import Any, Literal, Union
 import grpc
 import requests
 
-from groq.cloud.core.types import GroqListModelsResponse
 from groq.cloud.core.auth import Auth
-
 from groq.cloud.core.exceptions import *
-
-sys.path.append(os.path.join(sys.path[0], "protogen"))
+from groq.cloud.core.types import GroqListModelsResponse
 from public.llmcloud.modelmanager.v1 import modelmanager_pb2, modelmanager_pb2_grpc
 from public.llmcloud.requestmanager.v1 import (
     requestmanager_pb2,
@@ -123,8 +120,6 @@ class Models:
             )
         except Exception as e:
             raise e
-
-        # return GroqListModelsResponse(**resp)
         return response
 
 
@@ -199,16 +194,11 @@ class ChatCompletion:
                 resp = self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                # print("Invalid Args. Please check model name and other params")
                 raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                # print(
-                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
-                # )
                 raise ModelUnavailableError(e)
             else:
                 raise e
-            # return "", "", {}
 
         if streaming == True:
             self._update_history(user_prompt, "")
@@ -271,19 +261,14 @@ class Completion:
                 resp = self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                # print("Invalid Args. Please check model name and other params")
                 raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                # print(
-                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
-                # )
                 raise ModelUnavailableError(e)
         except grpc._channel._MultiThreadedRendezvous as e:
-            # TODO: this is broken somehow, as if what is being raised inst an exception?
+            # TODO: this is broken somehow, as if what is being raised isn't an exception?
             raise InvalidArgumentError(e)
         except Exception as e:
             raise e
-        # return "", "", {}
 
         if streaming == True:
             return self._resp_generator(resp_stream=resp_stream)
@@ -352,16 +337,11 @@ class AsyncCompletion:
                 resp = await self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                # print("Invalid Args. Please check model name and other params")
                 raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                # print(
-                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
-                # )
                 raise ModelUnavailableError(e)
             else:
                 raise e
-            # return "", "", {}
 
         if streaming == True:
             return self._resp_generator(resp_stream=resp_stream)
@@ -440,16 +420,11 @@ class AsyncChatCompletion:
                 resp = await self._stub.GetTextCompletion(request)
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                # print("Invalid Args. Please check model name and other params")
                 raise InvalidArgumentError(e)
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                # print(
-                #     f"grpc error: {e.details()}. Requested model maybe currently offline."
-                # )
                 raise ModelUnavailableError(e)
             else:
                 raise e
-            # return "", "", {}
 
         if streaming == True:
             self._update_history(user_prompt, "")
