@@ -1,7 +1,8 @@
 # https://github.com/openai/openai-python/blob/main/examples/module_client.py
 
-from groq.cloud.core import Completion
 import openai
+
+from groq.cloud.core import Completion
 
 
 class TestOpenAIModuleClient:

@@ -1,5 +1,5 @@
 from groq.cloud.core import Completion
-from groq.cloud.core.exceptions import ModelUnavailableError, InvalidArgumentError
+from groq.cloud.core.exceptions import InvalidArgumentError, ModelUnavailableError
 
 
 class TestCoreCompletion:

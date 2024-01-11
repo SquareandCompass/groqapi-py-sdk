@@ -1,8 +1,9 @@
-import os
 import datetime
+import os
 
-from groq.cloud.core.exceptions import AuthTokenError, AuthenticationError
 import requests
+
+from groq.cloud.core.exceptions import AuthenticationError, AuthTokenError
 
 
 class Auth:

@@ -6,7 +6,7 @@ from groq.cloud.core import ChatCompletion, Completion, Models
 
 if __name__ == "__main__":
     # Set env var GROQ_SECRET_ACCESS_KEY with the access, or you can also set it below
-    os.environ["GROQ_SECRET_ACCESS_KEY"] = "<key>"
+    # os.environ["GROQ_SECRET_ACCESS_KEY"] = "<key>"
 
     # List all Models first
     modelmanager = Models()

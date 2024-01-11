@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, Optional, cast
-from typing_extensions import Literal
 
 import grpc
+from typing_extensions import Literal
 
 
 class GroqError(Exception):

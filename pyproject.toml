@@ -1,9 +1,17 @@
 [tool.poetry]
 name = "groq"
-version = "0.1.0"
+version = "0.1.1"
 description = "The GroqAPI Python SDK"
-authors = ["Rohit Khaire <rkhaire@groq.com>", "Matanya Loewenthal <mloewenthal@groq.com>"]
+authors = ["Rohit Khaire <rkhaire@groq.com>", "Matanya Loewenthal <matanya@groq.com>"]
 readme = "README.md"
+
+packages = [
+    { include = "groq" },
+    { include = "google" },
+    { include = "public" },
+    { include = "buf" },
+]
+
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -40,6 +48,8 @@ exclude = [
     '^public/$',
 ]
 
+[tool.isort]
+profile = "black"
 
 [build-system]
 requires = ["poetry-core"]
