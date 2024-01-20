@@ -24,15 +24,8 @@ class GroqGrpcConnection:
     _API_URL = "api.groq.com:443"
     auth_client: Auth
 
-    def _is_past_expiry(self):
-        return datetime.now() >= datetime.strptime(
-            self._auth_expiry_time, "%Y-%m-%dT%H:%M:%SZ"
-        )
-
     def _get_grpc_credentials(self):
-        self._auth_token, self._auth_expiry_time = self.auth_client.get_token(
-            renew=True
-        )
+        self._auth_token = self.auth_client.get_token()
 
         credentials = grpc.ssl_channel_credentials()
         call_credentials = grpc.access_token_call_credentials(self._auth_token)
@@ -58,13 +51,7 @@ class GroqGrpcConnection:
             self._grpc_channel = None
 
     def get_grpc_channel(self):
-        if self._grpc_channel is not None:
-            if self._is_past_expiry():
-                self._grpc_channel.close()
-                self._auth_token = ""
-                self._auth_expiry_time = ""
-                self._grpc_channel = self._open_grpc_channel()
-        else:
+        if self._grpc_channel is None:
             self._grpc_channel = self._open_grpc_channel()
 
         return self._grpc_channel
@@ -75,13 +62,7 @@ class GroqGrpcConnection:
             self._grpc_channel_async = None
 
     def get_grpc_channel_async(self):
-        if self._grpc_channel_async is not None:
-            if self._is_past_expiry():
-                self._grpc_channel_async.aio.close()
-                self._auth_token = ""
-                self._auth_expiry_time = ""
-                self._grpc_channel_async = self._open_grpc_channel_async()
-        else:
+        if self._grpc_channel_async is None:
             self._grpc_channel_async = self._open_grpc_channel_async()
 
         return self._grpc_channel_async
@@ -100,27 +81,32 @@ class Models:
         request = modelmanager_pb2.ListModelsRequest()
         resp = self._stub.ListModels(request)
 
+        models = []
+
         try:
-            # TODO: support multiple models, the data structure can't do this
-            details = GroqListModelsResponse.Details(
-                family=resp.models[0].details.family,
-                version=resp.models[0].details.version,
-                size=resp.models[0].details.size,
-                sequence_length=resp.models[0].details.sequence_length,
-                tag=resp.models[0].details.tag,
-                name=resp.models[0].details.name,
-                owner=resp.models[0].details.owner,
-            )
-            meta = GroqListModelsResponse.Meta(created=resp.models[0].meta.created)
-            response = GroqListModelsResponse(
-                id=resp.models[0].id,
-                details=details,
-                meta=meta,
-                status=resp.models[0].status,
-            )
+            for model in resp.models:
+                details = GroqListModelsResponse.Details(
+                    family=model.details.family,
+                    version=model.details.version,
+                    size=model.details.size,
+                    sequence_length=model.details.sequence_length,
+                    tag=model.details.tag,
+                    name=model.details.name,
+                    owner=model.details.owner,
+                )
+                meta = GroqListModelsResponse.Meta(created=model.meta.created)
+                response = GroqListModelsResponse(
+                    id=model.id,
+                    details=details,
+                    meta=meta,
+                    status=model.status,
+                )
+
+                models.append(response)
         except Exception as e:
             raise e
-        return response
+
+        return models
 
 
 class ChatCompletion:

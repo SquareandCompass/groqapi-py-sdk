@@ -8,7 +8,7 @@ class TestCoreAuth:
             mp.delenv("GROQ_SECRET_ACCESS_KEY")
             auth_client = Auth()
             try:
-                _, _ = auth_client.get_token(renew=True)
+                _ = auth_client.get_token()
             except Exception as e:
                 assert type(e) is AuthTokenError
                 return
@@ -19,7 +19,7 @@ class TestCoreAuth:
             mp.setenv("GROQ_SECRET_ACCESS_KEY", "")
             auth_client = Auth()
             try:
-                _, _ = auth_client.get_token(renew=True)
+                _ = auth_client.get_token()
             except Exception as e:
                 assert type(e) is AuthTokenError
                 return
@@ -30,8 +30,16 @@ class TestCoreAuth:
             mp.setenv("GROQ_SECRET_ACCESS_KEY", "sfsdfsdfsdfs")
             auth_client = Auth()
             try:
-                _, _ = auth_client.get_token(renew=True)
+                _ = auth_client.get_token()
             except Exception as e:
-                assert type(e) is AuthenticationError
+                assert type(e) is AuthTokenError
                 return
             assert False
+
+    def test_correct_key(self):
+        auth_client = Auth()
+        try:
+            _ = auth_client.get_token()
+        except Exception:
+            assert False
+        assert True

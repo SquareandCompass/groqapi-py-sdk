@@ -1,45 +1,37 @@
-import datetime
 import os
 
+from groq.cloud.core.exceptions import AuthTokenError
 import requests
-
-from groq.cloud.core.exceptions import AuthenticationError, AuthTokenError
 
 
 class Auth:
     _grpc_channel = None
     _grpc_channel_async = None
-    _auth_token = ""
-    _auth_expiry_time = ""
-    _API_URL = "api.groq.com:443"
-    AUTH_URL = "https://api.groq.com/v1/auth/get_token"
+    _groq_access_key = ""
+    _VALIDATION_URL = "https://api.groq.com/v1/request_manager/ping"
 
     def __init__(self):
         return
 
-    def get_token(self, renew=False):
-        groq_access_key = os.environ.get("GROQ_SECRET_ACCESS_KEY")
+    def _verify_token_validity(self):
+        headers = {
+            "Authorization": "Bearer " + self._groq_access_key,
+        }
 
-        if self._auth_token != "" and renew is False:
-            return self._auth_token
-
-        if groq_access_key is None or groq_access_key == "":
+        try:
+            auth_resp = requests.post(url=self._VALIDATION_URL, headers=headers)
+            if not auth_resp.status_code == 404:
+                raise AuthTokenError
+        except Exception:
             raise AuthTokenError
 
-        Headers = {
-            "Authorization": "Bearer " + groq_access_key,
-        }
+        return True
+
+    def get_token(self):
+        self._groq_access_key = os.environ.get("GROQ_SECRET_ACCESS_KEY")
         try:
-            auth_resp = requests.post(url=self.AUTH_URL, headers=Headers)
-            self._auth_token = auth_resp.json()["access_token"]
-            self._auth_expiry_time = auth_resp.json()["expiry"]
-        except requests.exceptions.JSONDecodeError as e:
-            raise AuthenticationError
+            self._verify_token_validity()
+        except Exception:
+            raise AuthTokenError
 
-        # stopgap
-        return self._auth_token, self._auth_expiry_time
-
-    # def _is_past_expiry(self):
-    #     return datetime.now() >= datetime.strptime(
-    #         self._auth_expiry_time, "%Y-%m-%dT%H:%M:%SZ"
-    #     )
+        return self._groq_access_key
