@@ -138,8 +138,7 @@ class ChatCompletion:
 
     def _resp_generator(self, resp_stream):
         for response in resp_stream:
-            if self._history_index > -1:
-                self._lastmessages[self._history_index]["last_resp"] += response.content
+            self._lastmessages[-1]["last_resp"] += response.content
             yield response
 
     def send_chat(
