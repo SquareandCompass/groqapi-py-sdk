@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "groq"
-version = "0.1.1"
+version = "0.2.0"
 description = "The GroqAPI Python SDK"
 authors = ["Rohit Khaire <rkhaire@groq.com>", "Matanya Loewenthal <matanya@groq.com>"]
 readme = "README.md"
@@ -22,7 +22,6 @@ google-cloud = "^0.34.0"
 types-protobuf = "^4.24.0.4"
 types-requests = "^2.31.0.20231231"
 grpc-stubs = "^1.53.0.5"
-openai = "^1.6.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -31,6 +30,7 @@ black = "^23.12.1"
 coverage = "^7.4.0"
 mypy = "^1.8.0"
 pytest-cov = "^4.1.0"
+openai = "^1.6.1"
 prospector = {extras = ["with-bandit"], version = "^1.10.3"}
 
 [tool.coverage.run]
