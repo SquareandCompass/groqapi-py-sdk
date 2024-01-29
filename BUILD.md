@@ -41,6 +41,11 @@ To lint with prospector, run
 poetry run prospector
 ```
 
+### Versioning
+```bash
+poetry version [major|minor|patch]
+```
+
 ### Building
 To build .whl files and such, run 
 ```bash
